@@ -7,10 +7,10 @@ def dimensioni_simili(file1, file2, tolleranza=0.01):
     """Controlla se le dimensioni di due file sono simili entro una certa tolleranza (default 1%)."""
     size1 = os.path.getsize(file1)
     size2 = os.path.getsize(file2)
-    
+
     differenza = abs(size1 - size2)
     media_size = (size1 + size2) / 2
-    
+
     if differenza / media_size <= tolleranza:
         return True
     return False
@@ -20,25 +20,10 @@ def decomprimi_e_copia(cartella_origine, cartella_destinazione, password=None, t
         for file in files:
             if file.endswith(".rar"):
                 file_rar = os.path.join(root, file)
-                
+
                 # Nome file senza estensione .rar
                 nome_file_decompresso = os.path.splitext(file)[0]
-                
-                # Percorso del file nella destinazione
-                percorso_destinazione = os.path.join(cartella_destinazione, nome_file_decompresso)
-                
-                # Verifica se il file già esiste nella destinazione
-                if os.path.exists(percorso_destinazione):
-                    if os.path.isdir(percorso_destinazione):
-                        print(f"Il file {nome_file_decompresso} è già presente come directory, salto...")
-                        continue
-                    else:
-                        if dimensioni_simili(file_rar, percorso_destinazione, tolleranza):
-                            print(f"Il file {nome_file_decompresso} esiste già e le dimensioni sono simili, salto...")
-                            continue
-                        else:
-                            print(f"Il file {nome_file_decompresso} esiste ma differisce nelle dimensioni, lo sostituirò...")
-                
+
                 try:
                     # Crea una cartella temporanea per decomprimere il file
                     with tempfile.TemporaryDirectory() as tempdir:
@@ -50,19 +35,24 @@ def decomprimi_e_copia(cartella_origine, cartella_destinazione, password=None, t
                         for root_temp, dirs_temp, files_temp in os.walk(tempdir):
                             for file_temp in files_temp:
                                 percorso_file_temp = os.path.join(root_temp, file_temp)
-                                percorso_destinazione_finale = os.path.join(cartella_destinazione, file_temp)
-                                
-                                # Crea le cartelle se non esistono
+
+                                # Calcola il percorso relativo dalla cartella temporanea
+                                percorso_relativo = os.path.relpath(percorso_file_temp, tempdir)
+
+                                # Costruisci il percorso finale mantenendo la struttura delle directory relative
+                                percorso_destinazione_finale = os.path.join(cartella_destinazione, os.path.relpath(root, cartella_origine), percorso_relativo)
+
+                                # Crea le cartelle nella destinazione se non esistono
                                 os.makedirs(os.path.dirname(percorso_destinazione_finale), exist_ok=True)
-                                
+
                                 # Copia il file decompresso nella destinazione
                                 shutil.copy2(percorso_file_temp, percorso_destinazione_finale)
-                                
+
                                 # Verifica la dimensione del file copiato
                                 if dimensioni_simili(percorso_file_temp, percorso_destinazione_finale, tolleranza):
-                                    print(f"File copiato correttamente: {file_temp}")
+                                    print(f"File copiato correttamente: {percorso_relativo}")
                                 else:
-                                    print(f"Errore: Le dimensioni di {file_temp} non corrispondono. Ritentando...")
+                                    print(f"Errore: Le dimensioni di {percorso_relativo} non corrispondono. Ritentando...")
                                     # Ritenta la copia
                                     shutil.copy2(percorso_file_temp, percorso_destinazione_finale)
 
